@@ -1,4 +1,3 @@
-from flask import Flask, request, jsonify
 import requests
 import os
 import json
@@ -7,6 +6,7 @@ from dotenv import load_dotenv
 import logging
 from datetime import datetime
 import traceback
+from azure.functions import HttpRequest, HttpResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,9 +120,9 @@ def root_Process():
 
 
 @app.route("/sendReport", methods=["POST"])
-def send_report():
+def main(req: HttpRequest) -> HttpResponse:
     try:
-        data = request.get_json()
+        data = req.get_json()
         waid = data.get("waid")
 
         # Fetch the name and pan for the given waid
@@ -187,14 +187,14 @@ def send_report():
             else:
                 return jsonify({"error": "Failed to send PDF"}), 500
 
-            return jsonify({"message": "Report and message sent successfully"}), 200
+            return HttpResponse(
+                json.dumps({"message": "Report and message sent successfully"}),
+                status_code=200,
+            )
 
     except Exception as e:
-        # Log any unhandled exceptions
         logger.error(f"An error occurred: {str(e)}")
-        traceback.print_exc()  # Print the stack trace for debugging
-        return jsonify({"error": "Internal server error"}), 500
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8181, debug=False)  # Set debug to False in production
+        traceback.print_exc()
+        return HttpResponse(
+            json.dumps({"error": "Internal server error"}), status_code=500
+        )
